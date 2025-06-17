@@ -809,13 +809,11 @@ class Text(BaseMultipartText):
 
     @classmethod
     def from_latex(cls, latex):
-        from pylatexenc.latex2text import LatexNodes2Text
+        import codecs
+        import latexcodec  # noqa
         from pybtex.markup import LaTeXParser
 
-        # Use pylatexenc to convert LaTeX to text
-        converter = LatexNodes2Text()
-        text = converter.latex_to_text(latex)
-        return LaTeXParser(text).parse()
+        return LaTeXParser(codecs.decode(latex, 'ulatex')).parse()
 
 
 class Tag(BaseMultipartText):

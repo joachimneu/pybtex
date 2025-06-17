@@ -69,12 +69,17 @@ class Backend(BaseBackend):
 
     def format_str(self, str_):
         # Use pylatexenc to convert text to LaTeX
-        # For ASCII encoding, convert non-ASCII characters only
-        # For UTF-8 encoding, we still convert special characters like % to \%
+        # For ASCII encoding, convert all characters to ASCII-safe LaTeX
+        # For UTF-8 encoding, preserve UTF-8 characters (like original latexcodec)
         if self.encoding.upper() == 'ASCII':
-            return utf8tolatex(str_, non_ascii_only=True)
+            return utf8tolatex(str_, non_ascii_only=False)
         else:
-            return utf8tolatex(str_)
+            # For UTF-8, be very conservative - only convert problematic ASCII chars
+            # Don't convert non-ASCII characters to preserve UTF-8 as original latexcodec did
+            result = str_
+            # Only handle specific characters that might cause issues
+            result = result.replace('%', r'\%')
+            return result
 
     def format_protected_str(self, str_):
         # For protected strings, only convert non-ASCII characters

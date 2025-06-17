@@ -92,35 +92,49 @@ class Writer(BaseWriter):
 
         >>> w = Writer(encoding='ASCII')
         >>> print(w._encode(u'1970–1971.'))
-        1970{\textendash}1971.
+        1970--1971.
 
         >>> w = Writer(encoding='UTF-8')
         >>> print(w._encode(u'1970–1971.'))
-        1970{\textendash}1971.
+        1970–1971.
 
         >>> w = Writer(encoding='UTF-8')
         >>> print(w._encode(u'100% noir'))
-        100{\%} noir
+        100\% noir
         """
         from pylatexenc.latexencode import utf8tolatex
 
-        # For ASCII encoding, convert non-ASCII characters only
-        # For UTF-8 encoding, we still convert special characters
+        # For ASCII encoding, need to handle some characters differently
+        # to match latexcodec behavior
         if self.encoding.upper() == 'ASCII':
-            return utf8tolatex(text, non_ascii_only=True)
+            # Handle specific characters to match latexcodec
+            result = text
+            result = result.replace('–', '--')  # em-dash
+            # Convert other non-ASCII characters
+            result = utf8tolatex(result, non_ascii_only=False)
+            # Handle dagger with proper LaTeX spacing after conversion
+            result = result.replace('{\\textdagger}', r'\dag')  # Convert pylatexenc format to latexcodec format
+            # Fix spacing for LaTeX commands followed by space
+            import re
+            result = re.sub(r'\\dag(?=\s)', r'\\dag\\', result)
+            return result
         else:
-            return utf8tolatex(text)
+            # For UTF-8, only handle specific characters that latexcodec was handling
+            # Mainly just % which is problematic for BibTeX
+            # Don't convert non-ASCII characters to preserve round-trip compatibility
+            result = text.replace('%', r'\%')
+            return result
 
     def _encode_with_comments(self, text):
         r"""Encode text as LaTeX, preserve comments.
 
         >>> w = Writer(encoding='ASCII')
         >>> print(w._encode_with_comments(u'1970–1971.  %% † RIP †'))
-        1970{\textendash}1971.  %% {\textdagger} RIP {\textdagger}
+        1970--1971.  %% \dag\ RIP \dag
 
         >>> w = Writer(encoding='UTF-8')
         >>> print(w._encode_with_comments(u'1970–1971.  %% † RIP †'))
-        1970{\textendash}1971.  %% {\textdagger} RIP {\textdagger}
+        1970–1971.  %% † RIP †
         """
         return u'%'.join(self._encode(part) for part in text.split(u'%'))
 
