@@ -42,7 +42,7 @@ from __future__ import unicode_literals
 
 import codecs
 
-import latexcodec  # noqa
+from pylatexenc.latexencode import utf8tolatex
 from pybtex.backends import BaseBackend
 
 
@@ -65,10 +65,26 @@ class Backend(BaseBackend):
 
     def __init__(self, encoding=None):
         super(Backend, self).__init__(encoding)
-        self.latex_encoding = 'ulatex+' + self.encoding
+        # We no longer need the latex_encoding attribute since pylatexenc doesn't use codecs
 
     def format_str(self, str_):
-        return codecs.encode(str_, self.latex_encoding)
+        # Use pylatexenc to convert text to LaTeX
+        # For ASCII encoding, convert all characters to ASCII-safe LaTeX
+        # For UTF-8 encoding, preserve UTF-8 characters (like original latexcodec)
+        if self.encoding.upper() == 'ASCII':
+            return utf8tolatex(str_, non_ascii_only=False)
+        else:
+            # For UTF-8, be very conservative - only convert problematic ASCII chars
+            # Don't convert non-ASCII characters to preserve UTF-8 as original latexcodec did
+            result = str_
+            # Only handle specific characters that might cause issues
+            result = result.replace('%', r'\%')
+            return result
+
+    def format_protected_str(self, str_):
+        # For protected strings, only convert non-ASCII characters
+        # to preserve the literal meaning
+        return utf8tolatex(str_, non_ascii_only=True)
 
     def format_tag(self, tag_name, text):
         tag = self.tags.get(tag_name)
@@ -93,6 +109,20 @@ class Backend(BaseBackend):
         {CTAN}
         """
 
+        return '{%s}' % text
+
+    def render_protected(self, protected_text):
+        """Render protected text with minimal encoding."""
+        # Render parts using protected string formatting
+        rendered_parts = []
+        for part in protected_text.parts:
+            if hasattr(part, 'value'):  # String object
+                rendered_parts.append(self.format_protected_str(part.value))
+            else:
+                # For non-string parts, use regular rendering
+                rendered_parts.append(part.render(self))
+        
+        text = ''.join(rendered_parts)
         return '{%s}' % text
 
     def write_prologue(self):

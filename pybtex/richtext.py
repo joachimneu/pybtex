@@ -948,8 +948,13 @@ class Protected(BaseMultipartText):
         return [self]
 
     def render(self, backend):
-        text = super(Protected, self).render(backend)
-        return backend.format_protected(text)
+        # For protected text, use special formatting if available
+        if hasattr(backend, 'render_protected'):
+            return backend.render_protected(self)
+        else:
+            # Fallback to the original behavior
+            text = super(Protected, self).render(backend)
+            return backend.format_protected(text)
 
 
 class Symbol(BaseText):
