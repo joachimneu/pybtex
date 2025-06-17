@@ -54,7 +54,7 @@ README = open(os.path.join(ROOT, 'README')).read()
 
 install_requires = [
     'PyYAML>=3.01',
-    'latexcodec>=1.0.4',
+    'pylatexenc>=2.0',
     'importlib_metadata; python_version < "3.10"'
 ]
 extras_require = {

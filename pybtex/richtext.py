@@ -809,11 +809,13 @@ class Text(BaseMultipartText):
 
     @classmethod
     def from_latex(cls, latex):
-        import codecs
-        import latexcodec  # noqa
+        from pylatexenc.latex2text import LatexNodes2Text
         from pybtex.markup import LaTeXParser
 
-        return LaTeXParser(codecs.decode(latex, 'ulatex')).parse()
+        # Use pylatexenc to convert LaTeX to text
+        converter = LatexNodes2Text()
+        text = converter.latex_to_text(latex)
+        return LaTeXParser(text).parse()
 
 
 class Tag(BaseMultipartText):
@@ -948,8 +950,13 @@ class Protected(BaseMultipartText):
         return [self]
 
     def render(self, backend):
-        text = super(Protected, self).render(backend)
-        return backend.format_protected(text)
+        # For protected text, use special formatting if available
+        if hasattr(backend, 'render_protected'):
+            return backend.render_protected(self)
+        else:
+            # Fallback to the original behavior
+            text = super(Protected, self).render(backend)
+            return backend.format_protected(text)
 
 
 class Symbol(BaseText):

@@ -42,7 +42,7 @@ from __future__ import unicode_literals
 
 import codecs
 
-import latexcodec  # noqa
+from pylatexenc.latexencode import utf8tolatex
 from pybtex.backends import BaseBackend
 
 
@@ -65,10 +65,21 @@ class Backend(BaseBackend):
 
     def __init__(self, encoding=None):
         super(Backend, self).__init__(encoding)
-        self.latex_encoding = 'ulatex+' + self.encoding
+        # We no longer need the latex_encoding attribute since pylatexenc doesn't use codecs
 
     def format_str(self, str_):
-        return codecs.encode(str_, self.latex_encoding)
+        # Use pylatexenc to convert text to LaTeX
+        # For ASCII encoding, convert non-ASCII characters only
+        # For UTF-8 encoding, we still convert special characters like % to \%
+        if self.encoding.upper() == 'ASCII':
+            return utf8tolatex(str_, non_ascii_only=True)
+        else:
+            return utf8tolatex(str_)
+
+    def format_protected_str(self, str_):
+        # For protected strings, only convert non-ASCII characters
+        # to preserve the literal meaning
+        return utf8tolatex(str_, non_ascii_only=True)
 
     def format_tag(self, tag_name, text):
         tag = self.tags.get(tag_name)
@@ -93,6 +104,20 @@ class Backend(BaseBackend):
         {CTAN}
         """
 
+        return '{%s}' % text
+
+    def render_protected(self, protected_text):
+        """Render protected text with minimal encoding."""
+        # Render parts using protected string formatting
+        rendered_parts = []
+        for part in protected_text.parts:
+            if hasattr(part, 'value'):  # String object
+                rendered_parts.append(self.format_protected_str(part.value))
+            else:
+                # For non-string parts, use regular rendering
+                rendered_parts.append(part.render(self))
+        
+        text = ''.join(rendered_parts)
         return '{%s}' % text
 
     def write_prologue(self):

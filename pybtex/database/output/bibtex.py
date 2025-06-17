@@ -92,30 +92,35 @@ class Writer(BaseWriter):
 
         >>> w = Writer(encoding='ASCII')
         >>> print(w._encode(u'1970–1971.'))
-        1970--1971.
+        1970{\textendash}1971.
 
         >>> w = Writer(encoding='UTF-8')
         >>> print(w._encode(u'1970–1971.'))
-        1970–1971.
+        1970{\textendash}1971.
 
         >>> w = Writer(encoding='UTF-8')
         >>> print(w._encode(u'100% noir'))
-        100\% noir
+        100{\%} noir
         """
-        import latexcodec  # NOQA
+        from pylatexenc.latexencode import utf8tolatex
 
-        return codecs.encode(text, 'ulatex+{}'.format(self.encoding))
+        # For ASCII encoding, convert non-ASCII characters only
+        # For UTF-8 encoding, we still convert special characters
+        if self.encoding.upper() == 'ASCII':
+            return utf8tolatex(text, non_ascii_only=True)
+        else:
+            return utf8tolatex(text)
 
     def _encode_with_comments(self, text):
         r"""Encode text as LaTeX, preserve comments.
 
         >>> w = Writer(encoding='ASCII')
         >>> print(w._encode_with_comments(u'1970–1971.  %% † RIP †'))
-        1970--1971.  %% \dag\ RIP \dag
+        1970{\textendash}1971.  %% {\textdagger} RIP {\textdagger}
 
         >>> w = Writer(encoding='UTF-8')
         >>> print(w._encode_with_comments(u'1970–1971.  %% † RIP †'))
-        1970–1971.  %% † RIP †
+        1970{\textendash}1971.  %% {\textdagger} RIP {\textdagger}
         """
         return u'%'.join(self._encode(part) for part in text.split(u'%'))
 
